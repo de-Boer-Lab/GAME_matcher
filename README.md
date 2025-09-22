@@ -19,14 +19,38 @@ GAME introduces a module called “Matcher”, which automatically maps the Eval
 - **Syntactic matching:** addresses structural variations and common abbreviations, such as `hek-293` or `SKNSH` to `HEK293` or `SK-N-SH`, respectively.
 - **Semantic matching:** uses biological knowledge to connect different terms that refer to the same entity, such as mapping the description `chronic myelogenous leukemia cell line` to its canonical name, `K562`.
 
-## Queries Using a Local Large Language Model (LLM)
+## How Queries Work Using a Local Large Language Model (LLM)
 
 The Matcher bundles the `gemma3:12b` model and all necessary Python dependencies to map fuzzy, free-text user inputs to canonical terms from a controlled vocabulary. It operates as a standalone TCP server, accepting JSON-formatted requests and returning the best-matched term.
 
 Running Gemma 3 locally means that the model operates directly on the hardware of the system it is deployed in, ensuring data privacy, reducing reliance on external cloud APIs, and lowering operational costs, which are crucial for sensitive or high-throughput workflows. Gemma 3 is also very lightweight and efficient to run on a single GPU or TPU.
 
+## Matcher Protocol and API Reference
 
+The Matcher communicates over raw TCP sockets using a length-prefixed JSON payload.
 
-## Matcher API Reference
+### Matcher Request Payload
 
 The request payload is a JSON object. To perform a match for a specific category (e.g. cell_type), you must provide both the `_requested` key and the `_list` key for that category. You can include pairs for any or all supported categories in a single request.
+
+#### NOTE: Currently, our examples of Predictors only match cell type, TF binding molecules, and histone markers requests; not species. This will change as we work to add more Predictors and as more Predictor builders contribute to the library of GAME modules
+
+| Key                 | Value type - Required/Optional                   | Description  | Example   |
+|--------------|--------------|-------------------------------|--------------|
+| `cell_type_requested`                 | `string` - Optional (Paired)                   | The fuzzy input term for the cell type requested by the Evaluator | `"Leukemia cell line"`   |
+| `cell_type_list`                 | `array of strings` - Optional (Paired)                   | The list of choices the Predictor can support to match against | `["K562", "A549", "HepG2"]`   |
+| `species_requested`                 | `string` - Optional (Paired)                   | The fuzzy input term for the species requested by the Evaluator | `"h_sap"`   |
+| `species_list`                 | `array of strings` - Optional (Paired)                   | The list of choices the Predictor can support to match against | `["Homo sapiens", "Mus musculus"]`   |
+| `binding_molecule_requested`                 | `string` - Optional (Paired)                   | The fuzzy input term for the binding molecule requested by the Evaluator | `"H3K4_trimethylation"`   |
+| `binding_molecule_list`                 | `array of strings` - Optional (Paired)                   | The list of choices the Predictor can support to match against | `["CTCF", "H3K4me3", "POLR2A"]`   |
+
+### Matcher Response Payload
+
+The Matcher (server) sends back a JSON payload to the Predictor (client) a JSON payload containing the results of the matching tasks. An `_actual` key will be present for each category pair that was provided in the request.
+
+| Key                 | Value type                   | Description  | Example   |
+|--------------|--------------|-------------------------------|--------------|
+| `cell_type_actual`                 | `string` or `null`                   | The best match from the `cell_type_list` | `"K562"`   |
+| `species_actual`                 | `string` or `null`                   | The best match from the `species_list` | `"Homo sapiens"`   |
+| `binding_molecule_actual`                 | `string` or `null`                   | The best match from the `binding_molecule_list` | `"H3K4me3"`   |
+| `matcher_version`                 | `string`                   | The version of the Matcher that processed the request. | `"2.0"`   |
