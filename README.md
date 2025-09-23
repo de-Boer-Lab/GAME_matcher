@@ -23,6 +23,8 @@ wget -O matcher_v2.sif https://zenodo.org/records/16971848/files/matcher_v2.sif?
 
 2. Run the Matcher Server
 
+This single command starts the container, launches a private Ollama server inside it, and starts the Matcher TCP server on your specified port.
+
 ```bash
 # General Usage:
 # apptainer run --nv <sif_file> <IP_TO_LISTEN_ON> <PORT>
@@ -59,7 +61,7 @@ To efficiently match a term against a list of thousands of choices, the Matcher 
 
 This divide-and-conquer method allows the Matcher to scalably and efficiently find the best match from a massive search space.
 
-## Matcher Protocol and API Reference
+## API Reference
 
 The Matcher communicates over raw TCP sockets using a length-prefixed JSON payload.
 
