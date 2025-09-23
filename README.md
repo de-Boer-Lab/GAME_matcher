@@ -2,6 +2,8 @@
 
 A standalone service for the Genomic API for Model Evaluation (GAME) that maps free-text biological terms to canonical biological entities using a local LLM.
 
+<br>
+
 ## System Requirements
 
 To run the Matcher, the host system (e.g. a GPU node) must have:
@@ -10,6 +12,8 @@ To run the Matcher, the host system (e.g. a GPU node) must have:
 - **NVIDIA GPU:** Required for hardware acceleration of the LLM. The `--nv` flag must be used when running the container to enable GPU access.
 
 For a different GPU, like AMD's, check out the [Apptainer GPU Support documentation](https://apptainer.org/docs/user/1.0/gpu.html).
+
+<br>
 
 ## Usage
 
@@ -33,6 +37,8 @@ This single command starts the container, launches a private Ollama server insid
 apptainer run --nv --containall matcher_v2.sif 0.0.0.0 8080
 ```
 
+<br>
+
 ## Automated and Externalized Matching
 
 GAME introduces a module called “Matcher”, which automatically maps the Evaluator’s requested cell type, measured molecule (TF binding molecule/ protein and histone markers), and species with what a Predictor can provide. The Matcher is designed to perform this task by interpreting the relationship between terms through lexical, syntactic, and semantic matching.
@@ -40,6 +46,8 @@ GAME introduces a module called “Matcher”, which automatically maps the Eval
 - **Lexical matching:** handles cases of direct string correspondence, such as finding the exact token `A549` within a more descriptive choice like `lung adenocarcinoma cell line: A549`.
 - **Syntactic matching:** addresses structural variations and common abbreviations, such as `hek-293` or `SKNSH` to `HEK293` or `SK-N-SH`, respectively.
 - **Semantic matching:** uses biological knowledge to connect different terms that refer to the same entity, such as mapping the description `chronic myelogenous leukemia cell line` to its canonical name, `K562`.
+
+<br>
 
 ## How Queries Work Using a Local Large Language Model (LLM)
 
@@ -60,6 +68,8 @@ To efficiently match a term against a list of thousands of choices, the Matcher 
 3. **Conquer:** The champions from all chunks advance to a championship round. If there are too many champions for a single final round, they compete against each other in new elimination rounds. This process repeats recursively, like a tournament bracket, narrowing the field until a single, overall winner is determined.
 
 This divide-and-conquer method allows the Matcher to scalably and efficiently find the best match from a massive search space.
+
+<br>
 
 ## API Reference
 
