@@ -1,0 +1,12 @@
+# Ignoring the containers since they are huge
+*.sif
+
+# macOS system files
+*.DS_Store
+
+# Ignore large model data
+llm_matcher_v2/models/
+
+# Ignore Python cache files
+__pycache__/
+*.pyc

@@ -1,0 +1,156 @@
+Bootstrap: docker
+From: ollama/ollama:latest
+
+%files
+    # Copy requirements.txt, application scripts and models
+    requirements.txt /llm_matcher/requirements.txt
+    ollama_matcher.py /llm_matcher/ollama_matcher.py
+    matcher_server.py /llm_matcher/matcher_server.py
+    # The contents of './models' (i.e., 'manifests' and 'blobs' subdirs) 
+    # will go into '/custom_ollama_models'.
+    models /custom_ollama_models
+
+%environment
+     # Prevent automatic binding of host directories
+    export APPTAINER_NO_MOUNT="home,tmp,proc,sys"
+    # Configure Ollama to use the model directory
+    export OLLAMA_MODELS=/custom_ollama_models
+    # Listen on all interfaces
+    export OLLAMA_HOST=0.0.0.0:11434
+    export PYTHONUNBUFFERED=1
+
+    # Make the Python virtual environment the default for the container.
+    export PATH="/opt/venv/bin:$PATH"
+    export LD_LIBRARY_PATH="/opt/venv/lib:$LD_LIBRARY_PATH"
+    
+%post
+    # Install system packages needed for conda and building extensions
+    echo "Installing system dependencies..."
+    apt-get update -y && \
+    apt-get install -y ca-certificates curl python3 python3-pip python3-venv build-essential --no-install-recommends && \
+    apt-get clean && rm -rf /var/lib/apt/lists/*
+
+    # Update the certificate store inside the container
+    echo "Updating certificates..."
+    update-ca-certificates
+
+    # Ensure the target directory for requirements.txt and scripts exists
+    echo "Creating necessary directories... "
+    mkdir -p /llm_matcher
+    mkdir -p /custom_ollama_models
+
+    echo "Setting directory permissions..."
+    chmod -R 755 /llm_matcher /custom_ollama_models
+    
+    # Create and use a virtual environment
+    echo "Setting up Python virtual environment at /opt/venv to protect against mixing 'apt' provided packages and 'pip' provided packages......"
+    python3 -m venv /opt/venv
+
+    echo "Installing Python dependencies into the virtual environment..."
+    /opt/venv/bin/pip install --no-cache-dir -r /llm_matcher/requirements.txt
+    
+%runscript
+    #!/bin/bash
+    # Trap to ensure Ollama server is stopped on exit or interruption
+    trap 'echo "Stopping Ollama server (PID $SERVER_PID)..."; kill $SERVER_PID; wait $SERVER_PID 2>/dev/null; echo "Ollama server stopped."' EXIT SIGINT SIGTERM
+
+    # Start Ollama server to expose the port
+    # The OLLAMA_HOST and OLLAMA_MODELS from %environment will be used by runtime server
+    echo "Starting Ollama server in the background..."
+    /bin/ollama serve > /tmp/ollama_server.log 2>&1 &
+    SERVER_PID=$!
+
+    OLLAMA_CLIENT_HOST_RUNTIME="http://127.0.0.1:11434" 
+    echo "Waiting for Ollama server at ${OLLAMA_CLIENT_HOST_RUNTIME} to become responsive (max 60 seconds)..."
+
+    # Initialize variables for the server readiness check loop 
+    MAX_WAIT_SECONDS=60; 
+    WAIT_INTERVAL=5; 
+    ELAPSED_TIME=0;
+    SERVER_READY=false;
+
+    # Loop until the server is ready or the timeout is reached
+    while [ $ELAPSED_TIME -lt $MAX_WAIT_SECONDS ]; do
+        # Ask the Ollama server for a list of available models 
+        # Will redirect response if the server is up and running. 
+        if OLLAMA_HOST=${OLLAMA_CLIENT_HOST_RUNTIME} /bin/ollama list > /dev/null 2>&1; then
+            echo "Ollama server is responsive."; 
+            SERVER_READY=true; 
+            break;
+        else
+            if ! kill -0 $SERVER_PID > /dev/null 2>&1; then
+                echo "ERROR: Runtime Ollama server process (PID $SERVER_PID) is no longer running. Check log."
+                cat /tmp/ollama_server.log
+                exit 1
+            fi
+            echo "Runtime Ollama server not yet responsive (waited ${ELAPSED_TIME}s). Retrying..."
+            sleep $WAIT_INTERVAL
+            ELAPSED_TIME=$((ELAPSED_TIME + WAIT_INTERVAL))
+        fi
+    done
+
+    if [ ! "$SERVER_READY" = "true" ]; then
+        echo "FATAL: Runtime Ollama server failed to start/respond. Check log.";
+        tail -n 50 /tmp/ollama_server.log;
+        exit 1;
+    fi;
+
+    # Check if model is available
+    MODEL_EXPECTED="gemma3:12b"
+    echo "Verifying model '${MODEL_EXPECTED}' is available (should be copied from local)..."
+    if ! OLLAMA_HOST=${OLLAMA_CLIENT_HOST_RUNTIME} /bin/ollama list | grep -q "${MODEL_EXPECTED}"; then
+    # "^${MODEL_EXPECTED//:/\\:}(\s|$)"; then
+        echo "Error: Model '${MODEL_EXPECTED}' was NOT found. Ensure the './models' directory was correctly copied from ~/.ollama/models and included in the build."
+        echo "Available models:" 
+        OLLAMA_HOST=${OLLAMA_CLIENT_HOST_RUNTIME} /bin/ollama list
+        exit 1 
+    else
+        echo "Model '${MODEL_EXPECTED}' confirmed available."
+    fi
+
+    # Unset the host's SSL_CERT_FILE variable. This forces Python
+    # to use the container's own trusted certificate store that
+    # we installed with the 'ca-certificates' package.
+    unset SSL_CERT_FILE
+
+    # Finally start the Matcher Server
+    echo "Ollama is running using '${MODEL_EXPECTED}' model"
+    echo "Starting the Matcher server now..."
+    
+    # Check if exactly 2 arguments are passed at runtime
+    if [ "$#" -ne 2 ]; then
+        echo "Usage Error: Expected IP address and Port as arguments."
+        echo "Example: apptainer run --containall --nv <sif_file> 0.0.0.0 9999"
+        exit 1
+    fi
+
+    echo "Starting matcher_server.py to listen on $1:$2"
+    echo "=========================================================="
+    
+    # Use the Python executable from the virtual environment
+    /opt/venv/bin/python3 /llm_matcher/matcher_server.py "$@"
+
+%labels
+    Author "Satyam Priyadarshi"
+    Version "2.0"
+    Description "This container is the Matcher set up for Genomic API for Model Evaluation using a local LLM."
+
+%help
+    This container runs a matcher service powered by a local LLM using Ollama.
+    It bundles the 'gemma3:12b' model and all necessary Python dependencies.
+    This Matcher utilizes a robust chunking strategy, where the choices list is divided
+    into smaller, manageable chunks. A tournament-style, single elimination is performed to find the best possible match.
+
+    The server starts two components:
+    1. A background Ollama server (http://127.0.0.1:11434 inside the container).
+    2. The main 'matcher_server.py' script, which listens for client connections.
+
+    Usage:
+        ```
+        apptainer run <options> <sif_file> <IP_ADDRESS> <PORT>
+        ```
+    
+    Example:
+        ```
+        apptainer run --containall --nv matcher.sif 0.0.0.0 9999
+        ```
