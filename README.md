@@ -11,6 +11,26 @@ To run the Matcher, the host system (e.g. a GPU node) must have:
 
 For a different GPU, like AMD's, check out the [Apptainer GPU Support documentation](https://apptainer.org/docs/user/1.0/gpu.html).
 
+## Usage
+
+The Matcher (Version 2 -- Version 1 is deprecated) container can be downloaded from Zenodo: <https://zenodo.org/records/16971848>.
+
+1. Download the Matcher Container
+
+```bash
+wget -O matcher_v2.sif https://zenodo.org/records/16971848/files/matcher_v2.sif?download=1
+```
+
+2. Run the Matcher Server
+
+```bash
+# General Usage:
+# apptainer run --nv <sif_file> <IP_TO_LISTEN_ON> <PORT>
+
+# Example: Run the matcher, listening on all network interfaces on port 8080
+apptainer run --nv --containall matcher_v2.sif 0.0.0.0 8080
+```
+
 ## Automated and Externalized Matching
 
 GAME introduces a module called “Matcher”, which automatically maps the Evaluator’s requested cell type, measured molecule (TF binding molecule/ protein and histone markers), and species with what a Predictor can provide. The Matcher is designed to perform this task by interpreting the relationship between terms through lexical, syntactic, and semantic matching.
@@ -31,7 +51,7 @@ The Matcher uses highly specialized prompts for each biological category (`cell_
 
 ### **The Recursive Tournament Algorithm**
 
-To efficiently match a term against a list of thousands of choices, the Matcher uses a recursive tournament-style elimination process:
+To efficiently match a term against a list of thousands of choices, the Matcher uses a **recursive tournament-style elimination** process:
 
 1. **Divide:** The full list of choices is broken into small chunks (e.g. 20 items per chunk).
 2. **Compete:** The LLM finds the single best match within each chunk (the "chunk champion").
