@@ -15,13 +15,13 @@ For a different GPU, like AMD's, check out the [Apptainer GPU Support documentat
 
 The Matcher (Version 2 -- Version 1 is deprecated) container can be downloaded from Zenodo: <https://zenodo.org/records/16971848>.
 
-1. Download the Matcher Container
+1. **Download the Matcher Container**
 
 ```bash
 wget -O matcher_v2.sif https://zenodo.org/records/16971848/files/matcher_v2.sif?download=1
 ```
 
-2. Run the Matcher Server
+2. **Run the Matcher Server**
 
 This single command starts the container, launches a private Ollama server inside it, and starts the Matcher TCP server on your specified port.
 
