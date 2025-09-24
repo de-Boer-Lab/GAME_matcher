@@ -27,6 +27,8 @@ the Matcher returns the best match, the Predictor will complete its prediction a
 Evaluator, which will evaluate performance [Luthra et al. (2025)]. </figcaption>
 </figure>
 
+<br>
+
 ## System Requirements
 
 To run the Matcher, the host system (e.g. a GPU node) must have:
