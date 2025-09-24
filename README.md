@@ -126,6 +126,8 @@ The Matcher (server) sends back a JSON payload to the Predictor (client) a JSON 
 | `binding_molecule_actual`                 | `string` or `null`                   | The best match from the `binding_molecule_list` | `"H3K4me3"`   |
 | `matcher_version`                 | `string`                   | The version of the Matcher that processed the request. | `"2.0"`   |
 
+<br>
+
 ## **Examples of Matcher Performance**
 
 The matcher performs better when more contextual information is provided (e.g., `K562 (erythroid precursors)` is better than just `K562`).
