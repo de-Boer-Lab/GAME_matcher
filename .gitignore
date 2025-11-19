@@ -5,7 +5,14 @@
 *.DS_Store
 
 # Ignore large model data
-llm_matcher_v2/models/
+*/models/
+
+# Ignore tests and Slurm logs
+*tests
+*pytest*
+*rest_test_requirements.txt
+*matcher_err*
+*matcher_output*
 
 # Ignore Python cache files
 __pycache__/

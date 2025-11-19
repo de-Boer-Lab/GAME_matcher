@@ -1,0 +1,13 @@
+# Web framework
+fastapi
+uvicorn
+
+# Data validation
+pydantic
+
+# Core LangChain library and Ollama integration
+langchain
+langchain-ollama
+
+# Utilities
+tqdm

@@ -38,7 +38,8 @@ Choices: {choices_list}
 
 <INSTRUCTIONS>
 1.  Your final answer **MUST** be one of the exact strings from the 'Choices' list, or the literal string "NULL".
-2.  Follow these reasoning steps to arrive at your answer:
+2.  Format your output as a single JSON object with the key "{actual_key}".
+3.  Follow these reasoning steps to arrive at your answer:
     a. First, analyze the 'Fuzzy input' to identify the core biological entity.
     b. Second, scan the 'Choices' for a direct or near-identical match.
     c. Third, if no direct match exists, use your biological knowledge to find the most relevant choice.
@@ -46,7 +47,7 @@ Choices: {choices_list}
         - If 'Fuzzy input' includes specific annotations, prioritize choices matching those.
         - If 'Fuzzy input' is general, prioritize a more canonical or less granular choice from 'Choices', if highly relevant.
     e. Finally, if no choice is a confident semantic or biological match, it is **better to return 'NULL'** than to guess a poorly related option.
-3.  **You must not include any reasoning, explanation, or conversation in your output.**
+4.  **You must not include any reasoning, explanation, or conversation in your output.**
 </INSTRUCTIONS>
 
 <EXAMPLES>
@@ -89,29 +90,50 @@ Output: {{"{actual_key}": "NULL"}}
 Output:
 """
 
-SPECIES_TEMPLATE = """You are an expert in taxonomy and species identification. Your task is to find the single best match for a 'Fuzzy input' from the 'Choices' list.
-
-<INSTRUCTIONS>
-1.  Your final answer MUST be one of the exact strings from the 'Choices' list, or the literal string "NULL".
-2.  Consider common and scientific names.
-3.  Your output MUST be a JSON object with a single key, "{actual_key}", and the matching string as the value.
-4.  Do not output reasoning or any other text.
-</INSTRUCTIONS>
-
-<EXAMPLES>
-Fuzzy input: human
-Choices: ["Homo sapiens", "Mus musculus"]
-Output: {{"{actual_key}": "Homo sapiens"}}
-
-Fuzzy input: fruit fly
-Choices: ["Danio rerio", "Drosophila melanogaster"]
-Output: {{"{actual_key}": "Drosophila melanogaster"}}
-</EXAMPLES>
+SPECIES_TEMPLATE = """You are an expert in taxonomy and species identification. Your task is to find the **single best match** for a 'Fuzzy input' from the 'Choices' list.
 
 <TASK>
 Fuzzy input: {input_term}
 Choices: {choices_list}
 </TASK>
+
+<INSTRUCTIONS>
+1.  Your final answer **MUST** be one of the exact strings from the 'Choices' list, or the literal string "NULL".
+2.  Format your output as a single JSON object with the key "{actual_key}".
+3.  Follow these reasoning steps to arrive at your answer:
+    a. First, identify the 'Fuzzy input'. Is it a scientific name (e.g. *Homo sapiens*), a common name (e.g. human), or a potential abbreviation/typo?
+    b. Second, look for a direct, near identical match in the 'Choices' list.
+    c. Third, if no direct match exists, use your taxonomic knowledge to find the correct equivalent. A common name in the input should match its scientific name in the choices, and vice-versa.
+    d. Finally, if no choice is a confident semantic or biological match, it is **better to return 'NULL'** than to guess a poorly related option.
+4.  **You must not include any reasoning, explanation, or conversation in your output.**
+</INSTRUCTIONS>
+
+<EXAMPLES>
+**Example 1: Common to Scientific Name**
+Fuzzy input: human
+Choices: ["Homo sapiens", "Mus musculus"]
+Output: {{"{actual_key}": "Homo sapiens"}}
+
+**Example 2: Common to Scientific (Model Organism)**
+Fuzzy input: fruit fly
+Choices: ["Danio rerio", "Drosophila melanogaster"]
+Output: {{"{actual_key}": "Drosophila melanogaster"}}
+
+**Example 3: Scientific to Common Name**
+Fuzzy input: Mus musculus
+Choices: ["house mouse", "Rattus norvegicus"]
+Output: {{"{actual_key}": "house mouse"}}
+
+**Example 4: Handling Abbreviation**
+Fuzzy input: H. sapiens
+Choices: ["Homo sapiens", "Pan troglodytes"]
+Output: {{"{actual_key}": "Homo sapiens"}}
+
+**Example 5: No Valid Match**
+Fuzzy input: dog
+Choices: ["Homo sapiens", "Mus musculus", "Drosophila melanogaster"]
+Output: {{"{actual_key}": "NULL"}}
+</EXAMPLES>
 
 Output:
 """
@@ -122,30 +144,53 @@ You are an expert in molecular biology, specializing in DNA-binding molecules li
 Your task is to match the following 'Fuzzy input' term to the closest semantic and biological canonical term from the provided 'Choices' list. 
 The choices list may contain a mix of TFs and HMs.
 
-<INSTRUCTIONS>
-1. Analyze the 'Fuzzy input' term to infer its biological category (e.g. Is it a Transcription Factor or Histone Modification?)
-2. Search the 'Choices' list for terms that are symantically similar to the 'Fuzzy input'.
-3. Prioritize selecting a choice that belongs to the same biological category you inferred from the 'Fuzzy input'.
-4. If a good match that is consistent with the inferred category is found in 'Choices', return that term.
-5. If the 'Fuzzy input' is ambiguous, if it does not appear to be a standard or canonical biological entity, 
-or if no choice in the list is a reasonably good semantic and biological match (especially when considering its likely category versus the categories of items in the list),
-respond with the exact phrase "NULL".
-</INSTRUCTIONS>
-
-<EXAMPLES>
-Fuzzy input: H3K4 trimethylation
-Choices: ["CTCF", "H3K4me3", "POLR2A"]
-Output: {{"{actual_key}": "H3K4me3"}}
-
-Fuzzy input: RNA Polymerase II
-Choices: ["CTCF", "H3K27ac", "POLR2A"]
-Output: {{"{actual_key}": "POLR2A"}}
-</EXAMPLES>
-
 <TASK>
 Fuzzy input: {input_term}
 Choices: {choices_list}
 </TASK>
+
+<INSTRUCTIONS>
+1.  Your final answer **MUST** be one of the exact strings from the 'Choices' list, or the literal string "NULL".
+2.  Format your output as a single JSON object with the key "{actual_key}".
+3.  Follow these reasoning steps to arrive at your answer:
+    a. First, analyze the 'Fuzzy input'. Determine its biological nature: is it a **transcription factor**, a **histone modification**, a **co-factor**, or another DNA-associated protein? Note if it's a gene symbol, full name, synonym, or descriptive name.
+    b. Second, scan the 'Choices' for direct matches, canonical equivalents, or strong synonyms.
+    c. Third, **prioritize the choice that belongs to the same biological category** as the input. For example, if the input describes a histone mark, do not match it to a transcription factor.
+    d. Finally, if no choice is a confident semantic or biological match, it is **better to return 'NULL'** than to guess a poorly related option.
+4.  **You must not include any reasoning, explanation, or conversation in your output.**
+</INSTRUCTIONS>
+
+<EXAMPLES>
+**Example 1: Histone Modification (Description to Canonical)**
+Fuzzy input: H3K4 trimethylation
+Choices: ["CTCF", "H3K4me3", "POLR2A"]
+Output: {{"{actual_key}": "H3K4me3"}}
+
+**Example 2: TF (Full Name to Gene Symbol)**
+Fuzzy input: RNA Polymerase II
+Choices: ["CTCF", "H3K27ac", "POLR2A"]
+Output: {{"{actual_key}": "POLR2A"}}
+
+**Example 3: TF (Synonym to Gene Symbol)**
+Fuzzy input: c-Myc
+Choices: ["MYC", "MAX", "H3K27ac"]
+Output: {{"{actual_key}": "MYC"}}
+
+**Example 4: Co-activator (Common Name to Gene Symbol)**
+Fuzzy input: p300
+Choices: ["CREBBP", "HDAC1", "EP300"]
+Output: {{"{actual_key}": "EP300"}}
+
+**Example 5: No Valid Match (Category Mismatch)**
+Fuzzy input: CTCF
+Choices: ["H3K4me1", "H3K27me3", "H3K9me3"]
+Output: {{"{actual_key}": "NULL"}}
+
+**Example 6: No Valid Match (Irrelevant Molecule)**
+Fuzzy input: Actin
+Choices: ["CTCF", "POLR2A", "MYC"]
+Output: {{"{actual_key}": "NULL"}}
+</EXAMPLES>
 
 Output:
 """
