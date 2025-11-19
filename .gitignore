@@ -5,14 +5,20 @@
 *.DS_Store
 
 # Ignore large model data
-*/models/
+models/
 
 # Ignore tests and Slurm logs
-*tests
-*pytest*
-*rest_test_requirements.txt
-*matcher_err*
-*matcher_output*
+matcher_err.txt
+matcher_output.txt
+# Catch-all for standard log files
+*.log
+# Ignore the specific directory named 'tests'
+tests/
+# Ignore pytest configuration and cache
+pytest.ini
+.pytest_cache/
+# Ignore the test dependencies
+rest_test_requirements.txt
 
 # Ignore Python cache files
 __pycache__/
