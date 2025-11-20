@@ -13,9 +13,12 @@ A RESTful standalone service for the Genomic API for Model Evaluation (GAME) tha
     - [**Prompt Engineering**](#prompt-engineering)
     - [**The Recursive Tournament Algorithm**](#the-recursive-tournament-algorithm)
   - [API Reference](#api-reference)
+    - [**Endpoint**](#endpoint)
     - [**Matcher Request Payload**](#matcher-request-payload)
     - [**Matcher Response Payload**](#matcher-response-payload)
   - [**Examples of Matcher Performance**](#examples-of-matcher-performance)
+
+<br>
 
 ## Modules of GAME
 
@@ -32,7 +35,7 @@ A RESTful standalone service for the Genomic API for Model Evaluation (GAME) tha
 To run the Matcher, the host system (e.g. a GPU node) must have:
 
 - **Apptainer (formerly, Singularity):** Easy-to-use standard for running application containers.
-- **NVIDIA GPU:** Required for hardware acceleration of the LLM. The `--nv` flag must be used when running the container to enable GPU access.
+- **NVIDIA GPU:** Required for hardware acceleration of the LLM. The `--nv` flag must be used when running the container to enable GPU access.
 
 For a different GPU, like AMD's, check out the [Apptainer GPU Support documentation](https://apptainer.org/docs/user/1.0/gpu.html).
 
@@ -64,7 +67,7 @@ The Matcher container can be downloaded from Zenodo: [[ADD LINK HERE]].
 
 ## Automated and Externalized Matching
 
-GAME introduces a module called “Matcher”, which automatically maps the Evaluator’s requested cell type, measured molecule (TF binding molecule/ protein and histone markers), and species with what a Predictor can provide. The Matcher is designed to perform this task by interpreting the relationship between terms through lexical, syntactic, and semantic matching.
+GAME introduces a module called “Matcher”, which automatically maps the Evaluator's requested cell type, measured molecule (TF binding molecule/ protein and histone markers), and species with what a Predictor can provide. The Matcher is designed to perform this task by interpreting the relationship between terms through lexical, syntactic, and semantic matching.
 
 - **Lexical matching:** handles cases of direct string correspondence, such as finding the exact token `A549` within a more descriptive choice like `lung adenocarcinoma cell line: A549`.
 - **Syntactic matching:** addresses structural variations and common abbreviations, such as `hek-293` or `SKNSH` to `HEK293` or `SK-N-SH`, respectively.
@@ -80,15 +83,15 @@ Running Gemma 3 locally means that the model operates directly on the hardware o
 
 ### **Prompt Engineering**
 
-The Matcher uses highly specialized prompts for each biological category (`cell_type`, `species`, `binding_{molecule}`). These templates provide the LLM with a persona ("You are an expert..."), strict instructions on reasoning and output format, and few-shot examples to guide its behaviour.
+The Matcher uses highly specialized prompts for each biological category (`cell_type`, `species`, `binding_{molecule}`). These templates provide the LLM with a persona ("You are an expert..."), strict instructions on reasoning and output format, and few-shot examples to guide its behaviour.
 
 ### **The Recursive Tournament Algorithm**
 
 To efficiently match a term against a list of thousands of choices, the Matcher uses a **recursive tournament-style elimination** process:
 
-1. **Divide:** The full list of choices is broken into small chunks (e.g. 20 items per chunk).
-2. **Compete:** The LLM finds the single best match within each chunk (the "chunk champion").
-3. **Conquer:** The champions from all chunks advance to a championship round. If there are too many champions for a single final round, they compete against each other in new elimination rounds. This process repeats recursively, like a tournament bracket, narrowing the field until a single, overall winner is determined.
+1. **Divide:** The full list of choices is broken into small chunks (e.g. 20 items per chunk).
+2. **Compete:** The LLM finds the single best match within each chunk (the "chunk champion").
+3. **Conquer:** The champions from all chunks advance to a championship round. If there are too many champions for a single final round, they compete against each other in new elimination rounds. This process repeats recursively, like a tournament bracket, narrowing the field until a single, overall winner is determined.
 
 ![Recursive Tournament-Style Elimination Algorithm](images/recursive_tournament_matcher_new_colour_updated-modified.png)
 
@@ -100,7 +103,7 @@ This divide-and-conquer method allows the Matcher to scalably and efficiently fi
 
 The Matcher communicates over HTTP using a standardized REST API.
 
-**Endpoint**
+### **Endpoint**
 
 - **URL:** `/match`
 - **Method:** `POST`
@@ -112,9 +115,9 @@ The request payload must be a JSON object conforming to the schema below. The AP
 
 **Validation Rules:**
 
-1. **Paired Fields:** If you provide a requested term (e.g. cell_type_requested), you must also provide the corresponding list (e.g. cell_type_list).
+1. **Paired Fields:** If you provide a requested term (e.g. `cell_type_requested`), you must also provide the corresponding list (e.g. `cell_type_list`).
 
-2. **Minimum Requirement:** The request must contain at least one valid category pair to process. Empty requests will be rejected with a 422 Unprocessable Entity error.
+2. **Minimum Requirement:** The request must contain at least one valid category pair to process. Empty requests will be rejected with a `422 Unprocessable Entity` error.
 
 | Key                 | Value type - Required/Optional                   | Description  | Example   |
 |--------------|--------------|-------------------------------|--------------|
