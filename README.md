@@ -4,11 +4,11 @@ A RESTful standalone service for the Genomic API for Model Evaluation (GAME) tha
 
 ## Useful Links
 
-[bioRxiv Preprint](https://www.biorxiv.org/content/10.1101/2025.07.04.663250v1)
-[Matcher Container on Zenodo](https://zenodo.org/records/18203297)
-[Main GAME Repository](https://github.com/de-Boer-Lab/Genomic-API-for-Model-Evaluation)
-[List of GAME Modules Repository](https://github.com/de-Boer-Lab/GAME_modules)
-[GAME Documentation](https://genomic-api-for-model-evaluation-documentation.readthedocs.io)
+- [bioRxiv Preprint](https://www.biorxiv.org/content/10.1101/2025.07.04.663250v1)
+- [Matcher Container on Zenodo](https://zenodo.org/records/18203297)
+- [Main GAME Repository](https://github.com/de-Boer-Lab/Genomic-API-for-Model-Evaluation)
+- [List of GAME Modules Repository](https://github.com/de-Boer-Lab/GAME_modules)
+- [GAME Documentation](https://genomic-api-for-model-evaluation-documentation.readthedocs.io)
 
 ---
 
