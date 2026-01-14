@@ -4,6 +4,8 @@ A RESTful standalone service for the Genomic API for Model Evaluation (GAME) tha
 
 [Preprint](https://www.biorxiv.org/content/10.1101/2025.07.04.663250v1)
 
+👉 **[View Latest Release & Matcher Logic](../../releases/latest)**
+
 - [GAME Matcher Overview](#game-matcher-overview)
   - [Modules of GAME](#modules-of-game)
   - [System Requirements](#system-requirements)
