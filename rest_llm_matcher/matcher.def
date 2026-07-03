@@ -4,6 +4,7 @@ From: ollama/ollama:latest
 %files
     # Copy requirements.txt, application scripts and models
     requirements.txt /llm_matcher/requirements.txt
+    config.py /llm_matcher/config.py
     ollama_matcher.py /llm_matcher/ollama_matcher.py
     matcher_rest_api.py /llm_matcher/matcher_rest_api.py
     # The contents of './models' (i.e., 'manifests' and 'blobs' subdirs) 
@@ -138,7 +139,7 @@ From: ollama/ollama:latest
 
 %labels
     Author "Satyam Priyadarshi"
-    Version "2.0"
+    game_schema_version "1.0"
     Description "A container for the GAME Matcher REST API, using FastAPI and a local LLM."
 
 %help
@@ -151,9 +152,7 @@ From: ollama/ollama:latest
     1. A background Ollama server (http://127.0.0.1:11434 inside the container).
     2. The main 'matcher_rest_api.py' script, which listens for client connections.
 
-    API Documentation:
-    Once running, access the interactive API documentation (Swagger UI) in your browser
-    at http://<IP_ADDRESS>:<PORT>/docs
+    
 
     Usage:
         ```

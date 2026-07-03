@@ -6,8 +6,9 @@ from typing import Optional, List
 import uvicorn
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
-from pydantic import BaseModel, model_validator
+from pydantic import BaseModel, model_validator, ConfigDict
 
+from config import GAME_SCHEMA_VERSION
 from ollama_matcher import process_request_with_chunking
 
 # 1. Define Custom Exceptions for Clear Error Handling
@@ -28,7 +29,7 @@ class MatcherRequest(BaseModel):
     Defines the structure and validation rules for an incoming match request.
     FastAPI will automatically reject any request that doesn't conform to this structure.
     """
-    
+    model_config = ConfigDict(extra='forbid')  # Forbid any extra fields not defined here
     # Set up type-hinting
     cell_type_requested: Optional[str] = None
     cell_type_list: Optional[List[str]] = None
@@ -78,7 +79,7 @@ app = FastAPI(
     title="GAME Matcher API",
     description="A RESTful API for the GAME Matcher module, \
         which helps with automated task-alignment of biological terms using a local LLM.",
-    version="2.0.0"
+    version=GAME_SCHEMA_VERSION
 )
 
 # 4. Define a Custom Exception Handler
