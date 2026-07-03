@@ -1,11 +1,9 @@
 # ollama_matcher.py # CHUNKING
-# Version 2
 from langchain_ollama.llms import OllamaLLM
 from langchain_core.prompts import ChatPromptTemplate
 import sys
 import json
-
-MATCHER_VERSION = "2.0"
+from config import MATCHER_NAME
 
 # Initialize LLM
 try:
@@ -29,7 +27,7 @@ except Exception as e:
 # Set up prompts
 
 CELL_TYPE_TEMPLATE = """
-You are an expert in cell biology and ontology matching, spcializing in cell type nomenclature. Your task is to find the *single best match* for a 'Fuzzy input' from a given list of 'Choices'.
+You are an expert in cell biology and ontology matching, specializing in cell type nomenclature. Your task is to find the *single best match* for a 'Fuzzy input' from a given list of 'Choices'.
 
 <TASK>
 Fuzzy input: {input_term}
@@ -196,7 +194,7 @@ Output:
 """
 
 # Now decide which template to use given a prefix
-def get_chain_from_prefix(prefix):
+def _get_chain_from_prefix(prefix):
     """
     Selects a prompt template based on prefix and creates a LangChain chain.
 
@@ -212,12 +210,57 @@ def get_chain_from_prefix(prefix):
         template = SPECIES_TEMPLATE
     elif prefix == "binding_molecule":
         template =  BINDING_MOLECULE_TEMPLATE
-    else: # 
-        sys.stderr.write(f"Unknown prefix in request: '{prefix}'")
-        sys.exit(1)
+    else:
+        raise ValueError(f"Unknown prefix in request: '{prefix}'")
     prompt = ChatPromptTemplate.from_template(template)
     chain = prompt | llm
     return chain
+
+# Create a function to run a single round of chunking and return the champions from that round
+# Helps reduce code duplication since we will have multiple rounds of chunking if there are many champions after the first round
+
+def _run_chunk_round(chain, input_term, actual_key, chunks):
+    """
+    Run a single round of chunking: for each chunk, invoke the LLM chain and collect the champions.
+    Return a list of champions from this round.
+    """
+    chunk_champions = []
+    for i, chunk in enumerate(chunks):
+        print(f" -- Processing chunk {i+1}/{len(chunks)}... --")
+        
+        # Convert the current sub-list (chunk) into a clean JSON string for the prompt.
+        choices_for_llm = json.dumps(chunk)
+        
+        try:
+            # Invoke the LLM chain with the input term and formatted choices
+            llm_response_str = chain.invoke(
+                {
+                    "input_term": input_term,
+                    "choices_list": choices_for_llm,
+                    "actual_key": actual_key # dynamic key
+                }
+            )
+            
+            # Parse JSON string
+            # response_data[actual_key] = cleaned_response
+            response_json = json.loads(llm_response_str)
+            # Get the value from the parsed JSON
+            match = response_json.get(actual_key, "NULL")
+            
+            if match and match != "NULL":
+                if match in chunk:
+                    print(f"-- Winner for chunk {i+1}: {match} --")
+                    chunk_champions.append(match)
+                else:
+                    sys.stderr.write(f"Warning: LLM hallucinated a value '{match}' not in chunk {i+1}. Discarding.\n")
+            else:
+                print(f"-- Best match not available in chunk {i+1}: {match} --")
+            
+        except (json.JSONDecodeError, AttributeError, Exception) as e:
+            sys.stderr.write(f"Error processing chunk {i+1}: {e}\n")
+            
+    return chunk_champions
+
 
 def process_request_with_chunking(request_data, list_chunk_size=20):
     
@@ -264,106 +307,34 @@ def process_request_with_chunking(request_data, list_chunk_size=20):
             actual_key = f"{prefix}_actual"
             
             # Get a chain tailored for current prefix
-            current_chain = get_chain_from_prefix(prefix)
+            current_chain = _get_chain_from_prefix(prefix)
             
-            # INITIAL CHUNKING LOGIC
+            # INITIAL CHUNKING
             # 1. split the list of choices into smaller chunks
             # choices_as_string = json.dumps(choices_list)
             chunks = [choices_list[i:i + list_chunk_size] for i in range(0, len(choices_list), list_chunk_size)]
             print(f"Split into {len(chunks)} chunks of up to {list_chunk_size} choices each")
             
-            chunk_champions = []
-            for i, chunk in enumerate(chunks):
-                print(f" -- Processing chunk {i+1}/{len(chunks)}... --")
-                
-                # Convert the current sub-list (chunk) into a clean JSON string for the prompt.
-                choices_for_llm = json.dumps(chunk)
-                
-                try:
-                    # Invoke the LLM chain with the input term and formatted choices
-                    llm_response_str = current_chain.invoke(
-                        {
-                            "input_term": input_term,
-                            "choices_list": choices_for_llm,
-                            "actual_key": actual_key # dynamic key
-                        }
-                    )
-                    
-                    # --- JSON PARSING ---
-                    # Clean up the response: remove potential quotes and extra whitespaces
-                    # cleaned_response = "NULL" # llm_response.strip().strip('"').strip("'")
-                    
-                    # Parse JSON string
-                    # response_data[actual_key] = cleaned_response
-                    response_json = json.loads(llm_response_str)
-                    # Get the value from the parsed JSON
-                    match = response_json.get(actual_key, "NULL")
-                    
-                    if match and match != "NULL":
-                        if match in chunk:
-                            print(f"-- First-round winner for chunk {i+1}: {match} --")
-                            chunk_champions.append(match)
-                        else:
-                            sys.stderr.write(f"Warning: LLM hallucinated a value '{match}' not in chunk {i+1}. Discarding.\n")
-                    else:
-                        print(f"-- Best match not available in chunk {i+1}: {match} --")
-                    
-                except (json.JSONDecodeError, AttributeError, Exception) as e:
-                    sys.stderr.write(f"Error processing chunk {i+1}: {e}\n")
-                    
-            # RECURSIVE CHUNK CHAMPIONSHIP ROUND
+            chunk_champions = _run_chunk_round(current_chain, input_term, actual_key, chunks)
             # remove duplicates
             unique_champions = sorted(list(set(chunk_champions)))
             
+            # RECURSIVE CHUNK CHAMPIONSHIP ROUND
             while len(unique_champions) > list_chunk_size:
                 print(f"-- Championship rounds continue! {len(unique_champions)} candidates remaining, which is more than the maximum chunk size of {list_chunk_size}. --")
                 
                 chunks = [unique_champions[i: i+list_chunk_size] for i in range(0, len(unique_champions), list_chunk_size)]
                 print(f"Split champions from first set of rounds into {len(chunks)} new sub-championship chunks of up to {list_chunk_size} choices each")
                 
-                new_chunk_champions = []
-                for i, chunk in enumerate(chunks):
-                    print(f" -- Processing sub-championship chunk {i+1}/{len(chunks)}... --")
-                
-                    # Convert the current sub-list (chunk) into a clean JSON string for the prompt.
-                    choices_for_llm = json.dumps(chunk)
-                    
-                    try:
-                        # Invoke the LLM chain with the input term and formatted choices
-                        llm_response_str = current_chain.invoke(
-                            {
-                                "input_term": input_term,
-                                "choices_list": choices_for_llm,
-                                "actual_key": actual_key # dynamic key
-                            }
-                        )
-                        
-                        # --- JSON PARSING ---
-                        response_json = json.loads(llm_response_str)
-                        # Get the value from the parsed JSON
-                        match = response_json.get(actual_key, "NULL")
-                        
-                        if match and match != "NULL":
-                            if match in chunk:
-                                print(f"-- Sub-champion for chunk {i+1}: {match} --")
-                                new_chunk_champions.append(match)
-                            else:
-                                sys.stderr.write(f"Warning: LLM hallucinated a value '{match}' not in chunk {i+1}. Discarding.\n")
-                        else:
-                            print(f"-- Best match not available in chunk {i+1}: {match} --")
-                        
-                    except (json.JSONDecodeError, AttributeError, Exception) as e:
-                        sys.stderr.write(f"Error processing chunk {i+1}: {e}\n")
-                
+                new_chunk_champions = _run_chunk_round(current_chain, input_term, actual_key, chunks)
                 unique_champions = sorted(list(set(new_chunk_champions)))
              
-            # FINAL DECISION               
-            final_answer = "NULL"
+            # FINAL DECISION
             
             if not unique_champions:
                 print("-- No champions from any chunk. Final answer is NULL. --")
                 final_answer = "NULL"
-            if len(unique_champions) == 1:
+            elif len(unique_champions) == 1:
                 print(f"1 candidate remained after sub-championship: {unique_champions}")
                 final_answer = unique_champions[0]
             elif len(unique_champions) > 1:
@@ -389,11 +360,12 @@ def process_request_with_chunking(request_data, list_chunk_size=20):
                          final_answer = "NULL"
                 except (json.JSONDecodeError, AttributeError, Exception) as e:
                     sys.stderr.write(f"Error processing the final round: {e}\n")
+                    final_answer = "NULL"
             
             response_data[actual_key] = final_answer
             print(f"Best match (chunking): {response_data[actual_key]}")
     
     # Add the version key to the final dictionary before returning
-    response_data['matcher_version'] = MATCHER_VERSION
+    response_data['matcher_version'] = MATCHER_NAME
                
     return response_data
