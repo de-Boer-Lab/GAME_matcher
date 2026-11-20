@@ -368,7 +368,8 @@ def process_request_with_chunking(request_data, list_chunk_size=20):
                     sys.stderr.write(f"Error processing the final round: {e}\n")
                     raise  # More than one candidate remained, so this is an LLM failure, not "no match"
             
-            response_data[actual_key] = final_answer
+            # The LLM is prompted to say "NULL" when nothing matches; the API schema says no match is JSON null
+            response_data[actual_key] = None if final_answer == "NULL" else final_answer
             print(f"Best match (chunking): {response_data[actual_key]}")
     
     # Add the version key to the final dictionary before returning
