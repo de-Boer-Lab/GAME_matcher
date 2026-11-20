@@ -148,7 +148,9 @@ The Matcher (server) sends back a JSON payload to the Predictor (client), contai
 | `cell_type_actual`                 | `string` or `null`                   | The best match from the `cell_type_list` | `"K562"`   |
 | `species_actual`                 | `string` or `null`                   | The best match from the `species_list` | `"Homo sapiens"`   |
 | `binding_molecule_actual`                 | `string` or `null`                   | The best match from the `binding_molecule_list` | `"H3K4me3"`   |
-| `matcher_version`                 | `string`                   | The version of the Matcher that processed the request. | `"2.0"`   |
+| `matcher_version`                 | `string`                   | The version of the Matcher that processed the request (its container build name). | `"Matcher_20261027-023245_EDT"`   |
+
+`null` means the Matcher found no match. If the LLM fails on every chunk of a round or in the final round, the Matcher returns HTTP `500` (`{"error": "Matcher Server Internal Error", "detail": "..."}`) instead of `null`.
 
 <br>
 

@@ -225,6 +225,7 @@ def _run_chunk_round(chain, input_term, actual_key, chunks):
     Return a list of champions from this round.
     """
     chunk_champions = []
+    failures = []  # errors from LLM calls, to tell "the LLM failed" apart from "no match"
     for i, chunk in enumerate(chunks):
         print(f" -- Processing chunk {i+1}/{len(chunks)}... --")
         
@@ -258,7 +259,12 @@ def _run_chunk_round(chain, input_term, actual_key, chunks):
             
         except (json.JSONDecodeError, AttributeError, Exception) as e:
             sys.stderr.write(f"Error processing chunk {i+1}: {e}\n")
+            failures.append(e)
             
+    # If the LLM failed on every chunk this is an error, not "no match" (null is reserved for a real no-match).
+    # The exception becomes a 500 via MatcherLogicError in matcher_rest_api.py.
+    if chunks and len(failures) == len(chunks):
+        raise RuntimeError(f"LLM failed on every chunk: {failures[-1]}")
     return chunk_champions
 
 
@@ -360,9 +366,10 @@ def process_request_with_chunking(request_data, list_chunk_size=20):
                          final_answer = "NULL"
                 except (json.JSONDecodeError, AttributeError, Exception) as e:
                     sys.stderr.write(f"Error processing the final round: {e}\n")
-                    final_answer = "NULL"
+                    raise  # More than one candidate remained, so this is an LLM failure, not "no match"
             
-            response_data[actual_key] = final_answer
+            # The LLM is prompted to say "NULL" when nothing matches; the API schema says no match is JSON null
+            response_data[actual_key] = None if final_answer == "NULL" else final_answer
             print(f"Best match (chunking): {response_data[actual_key]}")
     
     # Add the version key to the final dictionary before returning
