@@ -1,5 +1,7 @@
 Bootstrap: docker
-From: ollama/ollama:latest
+# Pinned to the Ollama version the Matcher was built and tested with (0.23.0). Newer versions (0.40.x) need a
+# writable models directory ("manifests-v2") and fail to list the shipped models from the read-only image.
+From: ollama/ollama:0.23.0
 
 %files
     # Copy requirements.txt, application scripts and models
